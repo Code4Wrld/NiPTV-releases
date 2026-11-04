@@ -55,6 +55,9 @@ table { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
 th { text-align: left; color: var(--dim); font-weight: 500; font-size: 13px; padding: 4px 14px; }
 td { padding: 12px 14px; background: var(--panel-high); font-size: 14px; }
 td:first-child { border-radius: 14px 0 0 14px; } td:last-child { border-radius: 0 14px 14px 0; }
+th .sort { padding: 2px 8px; margin-left: -8px; border-radius: 10px; background: none; box-shadow: none; color: var(--dim); font: inherit; font-size: 13px; font-weight: 500; }
+th .sort:hover { color: var(--text); filter: none; } th .sort.on { color: var(--accent-text); font-weight: 700; }
+th .sort i { font-style: normal; display: inline-block; width: 1em; }
 tr.click { cursor: pointer; } tr.click:hover td { background: #3A2D6B; }
 .code { font-family: ui-monospace, Consolas, monospace; font-weight: 700; color: var(--accent-text); }
 .pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; background: rgba(147, 66, 255, .2); color: var(--accent-text); margin: 2px 6px 2px 0; }
@@ -120,7 +123,7 @@ details summary { cursor: pointer; }
     <div class="row"><input id="q" placeholder="Rechercher : code NIP-…, appareil, version" style="flex:1;min-width:220px"><button id="b-refresh" class="ghost">Actualiser</button></div>
   </div>
   <div class="card" style="padding:6px 10px">
-    <table><thead><tr><th>Reçu le</th><th>Code</th><th>Appareil</th><th>Version</th></tr></thead><tbody id="rows"></tbody></table>
+    <table><thead><tr><th><button class="sort" data-k="date">Date <i></i></button></th><th>Code</th><th>Appareil</th><th><button class="sort" data-k="version">Version <i></i></button></th></tr></thead><tbody id="rows"></tbody></table>
     <div id="m-list" class="msg"></div>
   </div>
 </section>
@@ -203,9 +206,31 @@ async function loadList() {
   if (error) return say('m-list', error.message, 'err');
   all = data; say('m-list', data.length ? '' : 'Aucun journal.'); drawList();
 }
+// Sorted by date (newest first) unless a column's title was clicked; clicked again: the other way.
+let sort = { k: 'date', desc: true };
+// "2.4.55" after "2.4.9": number by number.
+const vparts = v => String(v || '').split(/[^0-9]+/).filter(Boolean).map(Number);
+function vcmp(a, b) {
+  const x = vparts(a), y = vparts(b);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] ?? -1) - (y[i] ?? -1); if (d) return d; }
+  return 0;
+}
+const byDate = (a, b) => new Date(a.created_at) - new Date(b.created_at);
+document.querySelectorAll('th .sort').forEach(b => b.onclick = () => {
+  sort = sort.k === b.dataset.k ? { k: sort.k, desc: !sort.desc } : { k: b.dataset.k, desc: true };
+  drawList();
+});
 function drawList() {
   const q = $('q').value.trim().toLowerCase();
-  const rows = all.filter(r => !q || [r.code, r.device, r.app_version].join(' ').toLowerCase().includes(q));
+  const dir = sort.desc ? -1 : 1;
+  const rows = all.filter(r => !q || [r.code, r.device, r.app_version].join(' ').toLowerCase().includes(q))
+    // The same version: newest first.
+    .sort((a, b) => sort.k === 'version' ? (dir * vcmp(a.app_version, b.app_version) || -byDate(a, b)) : dir * byDate(a, b));
+  document.querySelectorAll('th .sort').forEach(b => {
+    const on = b.dataset.k === sort.k;
+    b.classList.toggle('on', on);
+    b.querySelector('i').textContent = on ? (sort.desc ? '↓' : '↑') : '';
+  });
   $('rows').innerHTML = rows.map((r, i) => `<tr class="click" data-i="${all.indexOf(r)}"><td>${when(r.created_at)}</td><td class="code">${esc(r.code || '—')}</td><td>${esc(r.device || '')}</td><td>${esc(r.app_version || '')}</td></tr>`).join('');
   document.querySelectorAll('#rows tr').forEach(tr => tr.onclick = () => openLog(all[+tr.dataset.i]));
 }
