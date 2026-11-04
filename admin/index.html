@@ -83,7 +83,7 @@ details summary { cursor: pointer; }
   <h2>Connexion</h2>
   <label for="email">E-mail</label><input id="email" type="email" autocomplete="username">
   <label for="pass">Mot de passe</label><input id="pass" type="password" autocomplete="current-password">
-  <div class="row" style="margin-top:16px"><button id="b-login">Se connecter</button><button id="b-signup" class="ghost">Créer mon compte</button></div>
+  <div class="row" style="margin-top:16px"><button id="b-login">Se connecter</button></div>
   <div id="m-login" class="msg"></div>
 </section>
 
@@ -187,13 +187,6 @@ $('b-login').onclick = async () => {
   const { error } = await sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('pass').value });
   if (error) return say('m-login', 'E-mail ou mot de passe incorrect.', 'err');
   say('m-login', ''); route();
-};
-$('b-signup').onclick = async () => {
-  if ($('pass').value.length < 10) return say('m-login', 'Choisis un mot de passe d’au moins 10 caractères.', 'err');
-  const { data, error } = await sb.auth.signUp({ email: $('email').value.trim(), password: $('pass').value, options: { emailRedirectTo: location.href } });
-  if (error) return say('m-login', error.message, 'err');
-  if (!data.session) return say('m-login', 'Compte créé : confirme ton adresse avec l’e-mail reçu, puis reviens te connecter.', 'ok');
-  route();
 };
 $('b-enroll').onclick = () => verify($('c-enroll').value, 'm-enroll');
 $('b-mfa').onclick = () => verify($('c-mfa').value, 'm-mfa');
