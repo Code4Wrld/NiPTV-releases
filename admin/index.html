@@ -271,7 +271,7 @@ $('b-all').onclick = () => {
 };
 $('b-delete').onclick = async () => {
   const codes = [...chosen];
-  if (!codes.length || !confirm(`Supprimer définitivement ${codes.length} journal${codes.length > 1 ? 'x' : ''} ? Impossible de revenir en arrière.`)) return;
+  if (!codes.length || !confirm(`Supprimer définitivement ${codes.length} ${codes.length > 1 ? 'journaux' : 'journal'} ? Impossible de revenir en arrière.`)) return;
   say('m-sel', 'Suppression…');
   let gone = [];
   // By packs: a long list of codes would not fit in one address.
@@ -283,7 +283,7 @@ $('b-delete').onclick = async () => {
   const removed = new Set(gone);
   all = all.filter(r => !removed.has(r.code));
   removed.forEach(c => chosen.delete(c));
-  if (gone.length) say('m-list', `${gone.length} journal${gone.length > 1 ? 'x' : ''} supprimé${gone.length > 1 ? 's' : ''}.`, 'ok');
+  if (gone.length) say('m-list', `${gone.length} ${gone.length > 1 ? 'journaux supprimés' : 'journal supprimé'}.`, 'ok');
   else if (!$('m-sel').classList.contains('err')) say('m-sel', 'Rien n\'a été supprimé : droits insuffisants ?', 'err');
   if (!chosen.size) selecting = gone.length ? false : selecting;
   drawList();
