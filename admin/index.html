@@ -58,7 +58,12 @@ td:first-child { border-radius: 14px 0 0 14px; } td:last-child { border-radius: 
 th .sort { padding: 2px 8px; margin-left: -8px; border-radius: 10px; background: none; box-shadow: none; color: var(--dim); font: inherit; font-size: 13px; font-weight: 500; }
 th .sort:hover { color: var(--text); filter: none; } th .sort.on { color: var(--accent-text); font-weight: 700; }
 th .sort i { font-style: normal; display: inline-block; width: 1em; }
-tr.click { cursor: pointer; } tr.click:hover td { background: #3A2D6B; }
+tr.click { cursor: pointer; }
+button.danger { background: var(--err); box-shadow: 0 6px 16px rgba(231, 76, 60, .3); }
+button:disabled { opacity: .45; cursor: default; filter: none; transform: none; }
+.pick { width: 1px; padding-right: 0; } .pick input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; margin: 0; }
+th.pick, td.pick { display: none; } .selecting th.pick, .selecting td.pick { display: table-cell; }
+tr.chosen td { background: #3A2D6B; } tr.click:hover td { background: #3A2D6B; }
 .code { font-family: ui-monospace, Consolas, monospace; font-weight: 700; color: var(--accent-text); }
 .pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; background: rgba(147, 66, 255, .2); color: var(--accent-text); margin: 2px 6px 2px 0; }
 .pill.warn { background: rgba(245, 197, 24, .16); color: var(--gold); } .pill.err { background: rgba(231, 76, 60, .18); color: #FF8A7E; } .pill.ok { background: rgba(46, 204, 113, .16); color: var(--ok); }
@@ -74,7 +79,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: #3A2D6B; }
 details summary { cursor: pointer; }
 .qr { background: #fff; padding: 12px; border-radius: 16px; width: 220px; display: block; margin: 8px auto; }
 ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
-@media (max-width: 640px) { th:nth-child(4), td:nth-child(4) { display: none; } header { padding: 12px 16px; } }
+@media (max-width: 640px) { th:nth-child(5), td:nth-child(5) { display: none; } header { padding: 12px 16px; } }
 </style>
 </head>
 <body>
@@ -120,10 +125,11 @@ details summary { cursor: pointer; }
 <!-- 5. Liste des journaux -->
 <section id="v-list" class="hidden">
   <div class="card">
-    <div class="row"><input id="q" placeholder="Rechercher : code NIP-…, appareil, version" style="flex:1;min-width:220px"><button id="b-refresh" class="ghost">Actualiser</button></div>
+    <div class="row"><input id="q" placeholder="Rechercher : code NIP-…, appareil, version" style="flex:1;min-width:220px"><button id="b-select" class="ghost">Sélectionner</button><button id="b-refresh" class="ghost">Actualiser</button></div>
+    <div id="selbar" class="row hidden" style="margin-top:12px"><button id="b-all" class="ghost">Tout sélectionner</button><button id="b-delete" class="danger" disabled>Supprimer</button><span id="m-sel" class="msg" style="margin:0"></span></div>
   </div>
   <div class="card" style="padding:6px 10px">
-    <table><thead><tr><th><button class="sort" data-k="date">Date <i></i></button></th><th>Code</th><th>Appareil</th><th><button class="sort" data-k="version">Version <i></i></button></th></tr></thead><tbody id="rows"></tbody></table>
+    <table><thead><tr><th class="pick"></th><th><button class="sort" data-k="date">Date <i></i></button></th><th>Code</th><th>Appareil</th><th><button class="sort" data-k="version">Version <i></i></button></th></tr></thead><tbody id="rows"></tbody></table>
     <div id="m-list" class="msg"></div>
   </div>
 </section>
@@ -231,9 +237,57 @@ function drawList() {
     b.classList.toggle('on', on);
     b.querySelector('i').textContent = on ? (sort.desc ? '↓' : '↑') : '';
   });
-  $('rows').innerHTML = rows.map((r, i) => `<tr class="click" data-i="${all.indexOf(r)}"><td>${when(r.created_at)}</td><td class="code">${esc(r.code || '—')}</td><td>${esc(r.device || '')}</td><td>${esc(r.app_version || '')}</td></tr>`).join('');
-  document.querySelectorAll('#rows tr').forEach(tr => tr.onclick = () => openLog(all[+tr.dataset.i]));
+  $('rows').innerHTML = rows.map((r, i) => `<tr class="click${chosen.has(r.code) ? ' chosen' : ''}" data-i="${all.indexOf(r)}"><td class="pick"><input type="checkbox" tabindex="-1"${chosen.has(r.code) ? ' checked' : ''}></td><td>${when(r.created_at)}</td><td class="code">${esc(r.code || '—')}</td><td>${esc(r.device || '')}</td><td>${esc(r.app_version || '')}</td></tr>`).join('');
+  // Selecting: a click ticks the line instead of opening it.
+  document.querySelectorAll('#rows tr').forEach(tr => tr.onclick = () => {
+    const r = all[+tr.dataset.i];
+    if (!selecting) return openLog(r);
+    chosen.has(r.code) ? chosen.delete(r.code) : chosen.add(r.code);
+    drawList();
+  });
+  shown = rows;
+  drawSelection();
 }
+
+// ---- Selecting logs to delete ----------------------------------------------------------
+let selecting = false, shown = [];
+const chosen = new Set();
+function drawSelection() {
+  $('v-list').classList.toggle('selecting', selecting);
+  $('selbar').classList.toggle('hidden', !selecting);
+  // One button whose words change, as in the app.
+  $('b-select').textContent = selecting ? 'Annuler' : 'Sélectionner';
+  const everyShown = shown.length > 0 && shown.every(r => chosen.has(r.code));
+  $('b-all').textContent = everyShown ? 'Tout désélectionner' : 'Tout sélectionner';
+  $('b-delete').disabled = chosen.size === 0;
+  $('b-delete').textContent = chosen.size ? `Supprimer (${chosen.size})` : 'Supprimer';
+}
+$('b-select').onclick = () => { selecting = !selecting; chosen.clear(); say('m-sel', ''); drawList(); };
+// "Tout": the lines shown, the search applied.
+$('b-all').onclick = () => {
+  const everyShown = shown.length > 0 && shown.every(r => chosen.has(r.code));
+  shown.forEach(r => everyShown ? chosen.delete(r.code) : chosen.add(r.code));
+  drawList();
+};
+$('b-delete').onclick = async () => {
+  const codes = [...chosen];
+  if (!codes.length || !confirm(`Supprimer définitivement ${codes.length} journal${codes.length > 1 ? 'x' : ''} ? Impossible de revenir en arrière.`)) return;
+  say('m-sel', 'Suppression…');
+  let gone = [];
+  // By packs: a long list of codes would not fit in one address.
+  for (let i = 0; i < codes.length; i += 100) {
+    const { data, error } = await sb.from('support_logs').delete().in('code', codes.slice(i, i + 100)).select('code');
+    if (error) { say('m-sel', error.message, 'err'); break; }
+    gone = gone.concat((data || []).map(d => d.code));
+  }
+  const removed = new Set(gone);
+  all = all.filter(r => !removed.has(r.code));
+  removed.forEach(c => chosen.delete(c));
+  if (gone.length) say('m-list', `${gone.length} journal${gone.length > 1 ? 'x' : ''} supprimé${gone.length > 1 ? 's' : ''}.`, 'ok');
+  else if (!$('m-sel').classList.contains('err')) say('m-sel', 'Rien n\'a été supprimé : droits insuffisants ?', 'err');
+  if (!chosen.size) selecting = gone.length ? false : selecting;
+  drawList();
+};
 $('q').oninput = drawList;
 
 // ---- One log, made readable ------------------------------------------------------------
