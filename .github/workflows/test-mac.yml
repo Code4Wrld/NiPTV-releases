@@ -16,7 +16,7 @@ on:
         default: piste
 
 env:
-  CODE_REPO: NicolasLambard/NiPTV-FireTV
+  CODE_REPO: Code4Wrld/Graal
 
 jobs:
   test:

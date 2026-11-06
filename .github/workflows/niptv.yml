@@ -9,7 +9,7 @@
 # plateforme dedans (Updates.kt).
 #
 # Secrets de CE depot (Settings > Secrets and variables > Actions) :
-#   CODE_TOKEN            jeton GitHub fine-grained, "Contents: Read-only" sur NicolasLambard/NiPTV-FireTV
+#   CODE_TOKEN            jeton GitHub fine-grained, "Contents: Read-only" sur Code4Wrld/Graal
 #   NIPTV_LICENCE_SECRET  le niptv.licenceSecret de local.properties (sans lui, Premium serait offert)
 #   NIPTV_KEYSTORE_B64    la cle de signature de l'APK (niptv.keystore), en base64 : sans la meme
 #                         cle, Android refuserait la mise a jour sur les appareils
@@ -30,7 +30,7 @@ permissions:
   contents: write
 
 env:
-  CODE_REPO: NicolasLambard/NiPTV-FireTV
+  CODE_REPO: Code4Wrld/Graal
 
 jobs:
   android:
